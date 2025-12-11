@@ -38,27 +38,31 @@ struct ContentView: View {
                 
                 // Bottom: Stats List (Only show when not running)
                 if viewModel.state != .running {
-                    ScrollView {
-                        VStack(spacing: 10) {
-                            ForEach(viewModel.solves) { solve in
-                                HStack {
-                                    Text(solve.formattedTime)
-                                        .font(.title3)
-                                        .bold()
-                                    Spacer()
-                                    Text(solve.date, style: .time)
-                                        .font(.caption)
-                                        .foregroundColor(.gray)
-                                }
-                                .padding(.horizontal)
-                                .padding(.vertical, 8)
-                                .background(Color.white.opacity(0.1))
-                                .cornerRadius(8)
+                    List {
+                        ForEach(viewModel.solves) { solve in
+                            HStack {
+                                Text(solve.formattedTime)
+                                    .font(.title3)
+                                    .bold()
+                                Spacer()
+                                Text(solve.date, style: .time)
+                                    .font(.caption)
+                                    .foregroundColor(.gray)
                             }
+                            .padding(.horizontal)
+                            .padding(.vertical, 8)
+                            .background(Color.white.opacity(0.1))
+                            .cornerRadius(8)
+                            .padding(.vertical, 4)
+                            .listRowBackground(Color.clear)
+                            .listRowSeparator(.hidden)
                         }
-                        .padding()
+                        .onDelete(perform: viewModel.deleteSolve)
                     }
+                    .listStyle(.plain)
+                    .scrollContentBackground(.hidden)
                     .frame(height: 200)
+                    .padding(.horizontal)
                 }
             }
         }
