@@ -32,3 +32,10 @@ struct Solve: Identifiable, Codable {
         return time.formattedTime
     }
 }
+
+struct Session: Identifiable, Codable, Hashable {
+    var id: UUID
+    var name: String
+    var solves: [Solve]
+    var cubeType: String
+}
