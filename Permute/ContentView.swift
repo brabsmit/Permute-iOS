@@ -34,6 +34,32 @@ struct ContentView: View {
                     .scaleEffect(viewModel.state == .holding ? 1.1 : 1.0)
                     .animation(.easeInOut(duration: 0.2), value: viewModel.state)
                 
+                // Averages Display
+                if viewModel.state != .running && viewModel.state != .inspection {
+                    HStack(spacing: 40) {
+                        VStack {
+                            Text("Ao5")
+                                .font(.caption)
+                                .foregroundColor(.gray)
+                            Text(viewModel.ao5)
+                                .font(.title2)
+                                .monospacedDigit()
+                                .foregroundColor(.white)
+                        }
+
+                        VStack {
+                            Text("Ao12")
+                                .font(.caption)
+                                .foregroundColor(.gray)
+                            Text(viewModel.ao12)
+                                .font(.title2)
+                                .monospacedDigit()
+                                .foregroundColor(.white)
+                        }
+                    }
+                    .padding(.top, 20)
+                }
+
                 Spacer()
                 
                 // Bottom: Stats List (Only show when not running)
@@ -100,15 +126,7 @@ struct ContentView: View {
     }
 
     private func formatTime(_ time: TimeInterval) -> String {
-        let minutes = Int(time) / 60
-        let seconds = Int(time) % 60
-        let milliseconds = Int((time.truncatingRemainder(dividingBy: 1)) * 100)
-        
-        if minutes > 0 {
-            return String(format: "%d:%02d.%02d", minutes, seconds, milliseconds)
-        } else {
-            return String(format: "%d.%02d", seconds, milliseconds)
-        }
+        time.formattedTime
     }
 }
 

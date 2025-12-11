@@ -23,6 +23,14 @@ class TimerViewModel: ObservableObject {
     @Published var solves: [Solve] = []
     @Published var inspectionTime: Int = 15
     
+    var ao5: String {
+        calculateAverage(of: 5)
+    }
+
+    var ao12: String {
+        calculateAverage(of: 12)
+    }
+
     private var timer: Timer?
     private var inspectionTimer: Timer?
     private var startDate: Date?
@@ -135,5 +143,23 @@ class TimerViewModel: ObservableObject {
            let decoded = try? JSONDecoder().decode([Solve].self, from: data) {
             solves = decoded
         }
+    }
+
+    private func calculateAverage(of count: Int) -> String {
+        guard solves.count >= count else { return "--" }
+        let recentSolves = Array(solves.prefix(count))
+        let times = recentSolves.map { $0.time }
+        guard let minTime = times.min(), let maxTime = times.max() else { return "--" }
+
+        // Remove best and worst
+        // Note: if multiple min or max exist, only one of each should be removed strictly speaking?
+        // WCA Rule 9f8) "The best and worst result are discarded..."
+        // If there are duplicate mins or maxs, we discard one of them.
+        // Summing all and subtracting min and max achieves this safely.
+
+        let sum = times.reduce(0, +) - minTime - maxTime
+        let avg = sum / Double(count - 2)
+
+        return avg.formattedTime
     }
 }
