@@ -22,6 +22,7 @@ class TimerViewModel: ObservableObject {
     @Published var currentScramble: String = ""
     @Published var solves: [Solve] = []
     @Published var inspectionTime: Int = 15
+    @Published var lastSolveWasPB: Bool = false
     
     // Settings
     @Published var isInspectionEnabled: Bool = UserDefaults.standard.bool(forKey: "isInspectionEnabled") {
@@ -154,6 +155,16 @@ class TimerViewModel: ObservableObject {
         
         // Save the solve
         let newSolve = Solve(id: UUID(), time: timeElapsed, scramble: currentScramble, date: Date())
+
+        // Check for PB
+        let otherSolves = solves // solves before inserting the new one
+        if let bestPrevious = otherSolves.min(by: { $0.time < $1.time }) {
+            lastSolveWasPB = newSolve.time < bestPrevious.time
+        } else {
+            // First solve ever is a PB
+            lastSolveWasPB = true
+        }
+
         solves.insert(newSolve, at: 0) // Add to top of list
         saveSolves()
         

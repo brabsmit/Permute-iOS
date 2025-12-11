@@ -10,6 +10,7 @@ import SwiftUI
 struct ContentView: View {
     @StateObject private var viewModel = TimerViewModel()
     @State private var showSettings = false
+    @State private var shareImage: Image?
     
     var body: some View {
         ZStack {
@@ -35,6 +36,26 @@ struct ContentView: View {
                     .scaleEffect(viewModel.state == .holding ? 1.1 : 1.0)
                     .animation(.easeInOut(duration: 0.2), value: viewModel.state)
                 
+                // Share PB Button
+                if viewModel.state != .running && viewModel.lastSolveWasPB, let shareImage = shareImage {
+                    ShareLink(
+                        item: shareImage,
+                        preview: SharePreview("New PB", image: shareImage)
+                    ) {
+                        HStack {
+                            Image(systemName: "square.and.arrow.up")
+                            Text("Share PB")
+                        }
+                        .font(.headline)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 10)
+                        .background(Color.yellow)
+                        .foregroundColor(.black)
+                        .cornerRadius(20)
+                    }
+                    .padding(.top, 10)
+                }
+
                 // Averages Display
                 if viewModel.state != .running && viewModel.state != .inspection {
                     HStack(spacing: 40) {
@@ -117,6 +138,13 @@ struct ContentView: View {
         .sheet(isPresented: $showSettings) {
             SettingsView(viewModel: viewModel)
         }
+        .onChange(of: viewModel.lastSolveWasPB) { isPB in
+            if isPB, let lastSolve = viewModel.solves.first {
+                self.shareImage = generateShareImage(for: lastSolve)
+            } else {
+                self.shareImage = nil
+            }
+        }
     }
     
     // UI Helpers
@@ -143,6 +171,16 @@ struct ContentView: View {
 
     private func formatTime(_ time: TimeInterval) -> String {
         time.formattedTime
+    }
+
+    @MainActor
+    private func generateShareImage(for solve: Solve) -> Image {
+        let renderer = ImageRenderer(content: ShareCardView(solve: solve))
+        renderer.scale = 3.0
+        if let uiImage = renderer.uiImage {
+            return Image(uiImage: uiImage)
+        }
+        return Image(systemName: "photo")
     }
 }
 
