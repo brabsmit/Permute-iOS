@@ -8,17 +8,17 @@
 import SwiftUI
 
 struct ContentView: View {
-
-    // We can control the selected tab if needed, but for now default is fine.
+    // Shared ViewModel
+    @StateObject private var timerViewModel = TimerViewModel()
     
     var body: some View {
         TabView {
-            TimerView()
+            TimerView(viewModel: timerViewModel)
                 .tabItem {
                     Label("Timer", systemImage: "timer")
                 }
 
-            MeView()
+            MeView(timerViewModel: timerViewModel)
                 .tabItem {
                     Label("Me", systemImage: "person.circle")
                 }

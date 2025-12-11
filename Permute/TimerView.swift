@@ -9,7 +9,7 @@
 import SwiftUI
 
 struct TimerView: View {
-    @StateObject private var viewModel = TimerViewModel()
+    @ObservedObject var viewModel: TimerViewModel
     @State private var showSettings = false
     @State private var showUndo = false
     @State private var shareImage: Image?
@@ -274,5 +274,5 @@ struct TimerView: View {
 }
 
 #Preview {
-    TimerView()
+    TimerView(viewModel: TimerViewModel())
 }

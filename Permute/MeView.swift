@@ -8,7 +8,9 @@
 import SwiftUI
 
 struct MeView: View {
+    @ObservedObject var timerViewModel: TimerViewModel
     @State private var user: WCAUser?
+    @State private var personData: PersonResponse?
     @State private var isLoading = false
     @State private var errorMessage: String?
     @State private var isLoggedIn = false
@@ -27,6 +29,14 @@ struct MeView: View {
                             VStack(spacing: 40) {
                                 PassportCardView(user: user)
                                     .padding(.horizontal)
+
+                                if let personData = personData {
+                                    ComparisonCardView(
+                                        personData: personData,
+                                        timerViewModel: timerViewModel
+                                    )
+                                    .padding(.horizontal)
+                                }
 
                                 Button(action: logout) {
                                     Text("Logout")
@@ -129,7 +139,19 @@ struct MeView: View {
                 await MainActor.run {
                     self.user = profile
                     self.isLoggedIn = true
-                    self.isLoading = false
+                }
+
+                // If we have a WCA ID, fetch the full person data (records)
+                if let wcaID = profile.wcaID {
+                    let person = try await WCAProfileService.shared.fetchPerson(wcaID: wcaID)
+                    await MainActor.run {
+                        self.personData = person
+                        self.isLoading = false
+                    }
+                } else {
+                    await MainActor.run {
+                        self.isLoading = false
+                    }
                 }
             } catch let error as WCANetworkError {
                 await MainActor.run {
@@ -186,6 +208,177 @@ struct MeView: View {
     }
 }
 
+struct ComparisonCardView: View {
+    let personData: PersonResponse
+    @ObservedObject var timerViewModel: TimerViewModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Vital Statistics (3x3)")
+                .font(.headline)
+                .foregroundColor(.white)
+
+            // Official vs App Single
+            HStack {
+                StatisticRow(
+                    title: "Single",
+                    official: personData.personalRecords?["333"]?.single?.best,
+                    local: localBestSingle
+                )
+            }
+
+            Divider().background(Color.gray)
+
+            // Official vs App Average
+            HStack {
+                StatisticRow(
+                    title: "Average",
+                    official: personData.personalRecords?["333"]?.average?.best,
+                    local: localBestAverage
+                )
+            }
+        }
+        .padding()
+        .background(Color.gray.opacity(0.2))
+        .cornerRadius(12)
+    }
+
+    private var localBestSingle: Int? {
+        // Find best single across all sessions for 3x3
+        // Time in timerViewModel is seconds, WCA is centiseconds
+        let solves = timerViewModel.sessions
+            .filter { $0.cubeType == "3x3" }
+            .flatMap { $0.solves }
+            .filter { $0.penalty != .dnf }
+
+        guard let best = solves.min(by: { $0.effectiveTime < $1.effectiveTime }) else { return nil }
+        return Int(best.effectiveTime * 100)
+    }
+
+    private var localBestAverage: Int? {
+        // This is harder because averages are calculated on the fly usually.
+        // We can just look at the current session's best Ao5 if it's 3x3?
+        // Or we need to calculate best Ao5 ever?
+        // Calculating best Ao5 ever across all history is expensive.
+        // Let's stick to the "Current Session" best Ao5 if it is 3x3,
+        // or iterate all solves in all 3x3 sessions.
+
+        // Iterating all solves to find best Ao5 is O(N). N is smallish (< 100,000).
+        // Let's try.
+
+        var bestAo5: Double = Double.infinity
+
+        for session in timerViewModel.sessions where session.cubeType == "3x3" {
+            let solves = session.solves
+            guard solves.count >= 5 else { continue }
+
+            // Sliding window
+            for i in 0...(solves.count - 5) {
+                let window = Array(solves[i..<(i+5)])
+                if let avg = calculateAo5(solves: window) {
+                    if avg < bestAo5 {
+                        bestAo5 = avg
+                    }
+                }
+            }
+        }
+
+        return bestAo5 == Double.infinity ? nil : Int(bestAo5 * 100)
+    }
+
+    private func calculateAo5(solves: [Solve]) -> Double? {
+        let times = solves.map { $0.penalty == .dnf ? Double.infinity : $0.effectiveTime }
+        guard let minTime = times.min(), let maxTime = times.max() else { return nil }
+
+        let dnfCount = solves.filter { $0.penalty == .dnf }.count
+        if dnfCount > 1 { return nil } // DNF
+
+        let sum = times.reduce(0) { $0 + ($1 == Double.infinity ? 0 : $1) }
+
+        var adjustedSum = sum
+        if maxTime != Double.infinity {
+            adjustedSum -= maxTime
+        }
+        adjustedSum -= minTime
+
+        return adjustedSum / 3.0
+    }
+}
+
+struct StatisticRow: View {
+    let title: String
+    let official: Int? // Centiseconds
+    let local: Int? // Centiseconds
+
+    var body: some View {
+        VStack(alignment: .leading) {
+            Text(title)
+                .font(.caption)
+                .foregroundColor(.gray)
+
+            HStack {
+                VStack(alignment: .leading) {
+                    Text("Official")
+                        .font(.caption2)
+                        .foregroundColor(.gray)
+                    Text(formatTime(official))
+                        .font(.system(.body, design: .monospaced))
+                        .bold()
+                        .foregroundColor(.white)
+                }
+
+                Spacer()
+
+                VStack(alignment: .leading) {
+                    Text("App PB")
+                        .font(.caption2)
+                        .foregroundColor(.gray)
+                    Text(formatTime(local))
+                        .font(.system(.body, design: .monospaced))
+                        .bold()
+                        .foregroundColor(.yellow)
+                }
+
+                Spacer()
+
+                VStack(alignment: .trailing) {
+                    Text("Delta")
+                        .font(.caption2)
+                        .foregroundColor(.gray)
+                    if let diff = calculateDiff() {
+                        Text(diff)
+                            .font(.system(.body, design: .monospaced))
+                            .bold()
+                            .foregroundColor(isImprovement ? .green : .red)
+                    } else {
+                        Text("--")
+                            .font(.system(.body, design: .monospaced))
+                            .foregroundColor(.gray)
+                    }
+                }
+            }
+        }
+    }
+
+    private var isImprovement: Bool {
+        guard let o = official, let l = local else { return false }
+        return l < o
+    }
+
+    private func calculateDiff() -> String? {
+        guard let o = official, let l = local else { return nil }
+        let diff = Double(l - o) / 100.0
+        let sign = diff < 0 ? "" : "+"
+        return "\(sign)\(String(format: "%.2f", diff))"
+    }
+
+    private func formatTime(_ centiseconds: Int?) -> String {
+        guard let cs = centiseconds else { return "--" }
+        let seconds = Double(cs) / 100.0
+        return seconds.formattedTime
+    }
+}
+
 #Preview {
-    MeView()
+    MeView(timerViewModel: TimerViewModel())
 }
