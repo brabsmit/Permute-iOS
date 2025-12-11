@@ -8,9 +8,11 @@
 import SwiftUI
 
 enum TimerState {
-    case idle       // Waiting for user
-    case holding    // User is holding screen (getting ready)
-    case running    // Timer is going
+    case idle           // Waiting for user
+    case readyToInspect // User holding to start inspection
+    case inspection     // Inspection countdown
+    case holding        // User is holding screen (getting ready to solve)
+    case running        // Timer is going
 }
 
 class TimerViewModel: ObservableObject {
@@ -18,8 +20,10 @@ class TimerViewModel: ObservableObject {
     @Published var state: TimerState = .idle
     @Published var currentScramble: String = ""
     @Published var solves: [Solve] = []
+    @Published var inspectionTime: Int = 15
     
     private var timer: Timer?
+    private var inspectionTimer: Timer?
     private var startDate: Date?
     
     init() {
@@ -32,23 +36,48 @@ class TimerViewModel: ObservableObject {
     
     // User touches screen
     func userTouchedDown() {
-        if state == .idle {
-            state = .holding
+        switch state {
+        case .idle:
+            state = .readyToInspect
             // Reset timer visuals
             timeElapsed = 0.0
-        } else if state == .running {
+        case .inspection:
+            state = .holding
+        case .running:
             stopTimer()
+        case .readyToInspect, .holding:
+            // Ignore additional touches if already holding
+            break
         }
     }
     
     // User releases screen
     func userTouchedUp() {
-        if state == .holding {
+        switch state {
+        case .readyToInspect:
+            startInspection()
+        case .holding:
             startTimer()
+        case .idle, .inspection, .running:
+            break
+        }
+    }
+
+    private func startInspection() {
+        state = .inspection
+        inspectionTime = 15
+
+        inspectionTimer?.invalidate()
+        inspectionTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+            guard let self = self else { return }
+            self.inspectionTime -= 1
         }
     }
     
     private func startTimer() {
+        inspectionTimer?.invalidate()
+        inspectionTimer = nil
+
         state = .running
         startDate = Date()
         
@@ -63,6 +92,9 @@ class TimerViewModel: ObservableObject {
     private func stopTimer() {
         timer?.invalidate()
         timer = nil
+        inspectionTimer?.invalidate()
+        inspectionTimer = nil
+
         state = .idle
         
         // Save the solve
