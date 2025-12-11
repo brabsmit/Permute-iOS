@@ -28,7 +28,7 @@ struct ContentView: View {
                 Spacer()
                 
                 // Center: The Timer
-                Text(formatTime(viewModel.timeElapsed))
+                Text(timerText)
                     .font(.system(size: 80, weight: .bold, design: .monospaced))
                     .foregroundColor(timerColor)
                     .scaleEffect(viewModel.state == .holding ? 1.1 : 1.0)
@@ -81,11 +81,24 @@ struct ContentView: View {
     private var timerColor: Color {
         switch viewModel.state {
         case .idle: return .white
+        case .readyToInspect: return .yellow
+        case .inspection: return .white // Countdown is white
         case .holding: return .green // Ready to go!
         case .running: return .gray
         }
     }
     
+    private var timerText: String {
+        switch viewModel.state {
+        case .inspection:
+            return "\(viewModel.inspectionTime)"
+        case .readyToInspect:
+            return "INSPECT"
+        default:
+            return formatTime(viewModel.timeElapsed)
+        }
+    }
+
     private func formatTime(_ time: TimeInterval) -> String {
         let minutes = Int(time) / 60
         let seconds = Int(time) % 60
