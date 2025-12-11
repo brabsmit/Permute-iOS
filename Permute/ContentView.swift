@@ -10,6 +10,7 @@ import SwiftUI
 struct ContentView: View {
     @StateObject private var viewModel = TimerViewModel()
     @State private var showSettings = false
+    @State private var showUndo = false
     @State private var shareImage: Image?
     @State private var showAnalysis = false
     @State private var showManualEntry = false
@@ -19,6 +20,16 @@ struct ContentView: View {
             // Background Color changes based on state
             Color.black.edgesIgnoringSafeArea(.all)
             
+            // Gesture Layer for Two-Finger Tap (Underneath main content but above background)
+            // Active during idle and waiting (to capture tap during wait phase)
+            if viewModel.state == .idle || viewModel.state == .waiting {
+                TwoFingerTapView {
+                    viewModel.togglePlusTwo()
+                }
+                .edgesIgnoringSafeArea(.all)
+                .allowsHitTesting(true) // Ensure it captures touches
+            }
+
             VStack {
                 // Top: Scramble
                 if viewModel.state != .running {
@@ -37,6 +48,20 @@ struct ContentView: View {
                     .foregroundColor(timerColor)
                     .scaleEffect(viewModel.state == .holding ? 1.1 : 1.0)
                     .animation(.easeInOut(duration: 0.2), value: viewModel.state)
+                    // Swipe Right on Timer to Delete
+                    .gesture(
+                        DragGesture()
+                            .onEnded { value in
+                                if viewModel.state == .idle && value.translation.width > 50 {
+                                    viewModel.deleteLastSolve()
+                                    showUndo = true
+                                    // Hide undo after 3 seconds
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                                        showUndo = false
+                                    }
+                                }
+                            }
+                    )
                 
                 // Share PB Button
                 if viewModel.state != .running && viewModel.lastSolveWasPB, let shareImage = shareImage {
@@ -116,9 +141,10 @@ struct ContentView: View {
                 }
             }
         }
-        // The Invisible Touch Layer
+        // The Invisible Touch Layer for Timer
         .contentShape(Rectangle())
         .onLongPressGesture(minimumDuration: 0.0, pressing: { isPressing in
+            // Only trigger if not performing gestures
             if isPressing {
                 viewModel.userTouchedDown()
             } else {
@@ -149,6 +175,27 @@ struct ContentView: View {
                 .padding()
             }
         }
+        .overlay(alignment: .bottom) {
+            // Undo Button
+            if showUndo && viewModel.lastDeletedSolve != nil {
+                Button(action: {
+                    viewModel.undoDelete()
+                    showUndo = false
+                }) {
+                    HStack {
+                        Image(systemName: "arrow.uturn.backward")
+                        Text("Undo Delete")
+                    }
+                    .padding()
+                    .background(Color.white)
+                    .foregroundColor(.black)
+                    .cornerRadius(20)
+                }
+                .padding(.bottom, 50)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .animation(.easeInOut, value: showUndo)
+            }
+        }
         .sheet(isPresented: $showSettings) {
             SettingsView(viewModel: viewModel)
         }
@@ -166,7 +213,7 @@ struct ContentView: View {
     // UI Helpers
     private var timerColor: Color {
         switch viewModel.state {
-        case .idle: return .white
+        case .idle, .waiting: return .white
         case .readyToInspect: return .yellow
         case .inspection: return .white // Countdown is white
         case .holding: return .green // Ready to go!
@@ -180,6 +227,12 @@ struct ContentView: View {
             return "\(viewModel.inspectionTime)"
         case .readyToInspect:
             return "INSPECT"
+        case .idle, .waiting:
+            // Display the last solve's formatted time (with penalties) if available
+            if let lastSolve = viewModel.solves.first, viewModel.timeElapsed == lastSolve.time {
+                return lastSolve.formattedTime
+            }
+            return formatTime(viewModel.timeElapsed)
         default:
             return formatTime(viewModel.timeElapsed)
         }

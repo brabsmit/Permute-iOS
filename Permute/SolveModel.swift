@@ -22,14 +22,36 @@ extension TimeInterval {
     }
 }
 
+enum Penalty: String, Codable {
+    case none
+    case plusTwo = "+2"
+    case dnf = "DNF"
+}
+
 struct Solve: Identifiable, Codable {
     let id: UUID
     let time: TimeInterval
     let scramble: String
     let date: Date
+    var penalty: Penalty? = .none // Optional for backward compatibility
+
+    var effectiveTime: TimeInterval {
+        switch penalty ?? .none {
+        case .none: return time
+        case .plusTwo: return time + 2.0
+        case .dnf: return 0 // DNF logic should be handled in averages
+        }
+    }
 
     var formattedTime: String {
-        return time.formattedTime
+        switch penalty ?? .none {
+        case .none:
+            return time.formattedTime
+        case .plusTwo:
+            return effectiveTime.formattedTime + "+"
+        case .dnf:
+            return "DNF"
+        }
     }
 }
 

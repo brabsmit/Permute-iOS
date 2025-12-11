@@ -10,6 +10,7 @@ import UIKit
 
 enum TimerState {
     case idle           // Waiting for user
+    case waiting        // User touched, waiting to confirm hold (prevent accidental starts on taps)
     case readyToInspect // User holding to start inspection
     case inspection     // Inspection countdown
     case holding        // User is holding screen (getting ready to solve)
@@ -24,6 +25,7 @@ class TimerViewModel: ObservableObject {
     @Published var inspectionTime: Int = 15
     @Published var lastSolveWasPB: Bool = false
     
+    @Published var lastDeletedSolve: Solve?
     // Sessions
     @Published var sessions: [Session] = []
     @Published var currentSessionId: UUID = UUID()
@@ -64,6 +66,7 @@ class TimerViewModel: ObservableObject {
 
     private var timer: Timer?
     private var inspectionTimer: Timer?
+    private var waitTimer: Timer?
     private var startDate: Date?
     private let solvesKey = "solves_history" // Legacy key
     private let sessionsKey = "sessions_history"
@@ -96,6 +99,32 @@ class TimerViewModel: ObservableObject {
     
     func deleteSolve(at offsets: IndexSet) {
         solves.remove(atOffsets: offsets)
+        saveSolves()
+    }
+
+    func deleteLastSolve() {
+        guard !solves.isEmpty else { return }
+        lastDeletedSolve = solves.removeFirst()
+        saveSolves()
+    }
+
+    func undoDelete() {
+        guard let solve = lastDeletedSolve else { return }
+        solves.insert(solve, at: 0)
+        lastDeletedSolve = nil
+        saveSolves()
+    }
+
+    func togglePlusTwo() {
+        guard !solves.isEmpty else { return }
+        var solve = solves[0]
+        if solve.penalty == .plusTwo {
+            solve.penalty = .none
+        } else {
+            solve.penalty = .plusTwo
+        }
+        solves[0] = solve
+        saveSolves()
         saveData()
     }
 
@@ -110,15 +139,22 @@ class TimerViewModel: ObservableObject {
     func userTouchedDown() {
         switch state {
         case .idle:
-            // Reset timer visuals
-            timeElapsed = 0.0
+            // Go to waiting to distinguish tap from hold
+            state = .waiting
 
-            if isInspectionEnabled {
-                state = .readyToInspect
-            } else {
-                state = .holding
+            // Start a short timer to confirm hold
+            waitTimer?.invalidate()
+            waitTimer = Timer.scheduledTimer(withTimeInterval: 0.15, repeats: false) { [weak self] _ in
+                guard let self = self else { return }
+                // Confirm hold
+                self.timeElapsed = 0.0
+                if self.isInspectionEnabled {
+                    self.state = .readyToInspect
+                } else {
+                    self.state = .holding
+                }
+                self.triggerHapticFeedback(style: .light)
             }
-            triggerHapticFeedback(style: .light)
 
         case .inspection:
             state = .holding
@@ -128,7 +164,7 @@ class TimerViewModel: ObservableObject {
             stopTimer()
             triggerHapticFeedback(style: .heavy)
 
-        case .readyToInspect, .holding:
+        case .readyToInspect, .holding, .waiting:
             // Ignore additional touches if already holding
             break
         }
@@ -137,6 +173,12 @@ class TimerViewModel: ObservableObject {
     // User releases screen
     func userTouchedUp() {
         switch state {
+        case .waiting:
+            // Released before hold confirmation -> Tap
+            waitTimer?.invalidate()
+            waitTimer = nil
+            state = .idle
+
         case .readyToInspect:
             startInspection()
             triggerHapticFeedback(style: .medium)
@@ -312,17 +354,60 @@ class TimerViewModel: ObservableObject {
     private func calculateAverage(of count: Int) -> Double? {
         guard solves.count >= count else { return nil }
         let recentSolves = Array(solves.prefix(count))
+        // Use effectiveTime for averages
+        let times = recentSolves.map { $0.effectiveTime }
+
+        // Handle DNF: if any are DNF (0 in effectiveTime currently, but logically infinite)
+        // WCA Rule: if more than 1 DNF in average of 5, result is DNF.
+        // If 1 DNF, it counts as worst.
+
+        // Count DNFs
+        let dnfCount = recentSolves.filter { $0.penalty == .dnf }.count
+
+        if count == 5 {
+            if dnfCount > 1 { return "DNF" }
+        } else if count == 12 {
+            if dnfCount > 1 { return "DNF" } // Wait, for Ao12, is it > 1? WCA: Any result > 1 DNF is DNF.
+        }
+
+        // If there is 1 DNF, we treat it as the worst time.
+        // My effectiveTime returns 0 for DNF.
+        // So I should filter out DNFs for min/max calculation logic?
+
+        // Better strategy: Map DNF to infinity
+        let numericTimes = recentSolves.map { solve -> Double in
+            if solve.penalty == .dnf {
+                return Double.infinity
+            }
+            return solve.effectiveTime
+        }
+
+        guard let minTime = numericTimes.min(), let maxTime = numericTimes.max() else { return "--" }
+
+        // If maxTime is infinity (DNF), it gets removed as the "worst".
         let times = recentSolves.map { $0.time }
         guard let minTime = times.min(), let maxTime = times.max() else { return nil }
 
         // Remove best and worst
-        // Note: if multiple min or max exist, only one of each should be removed strictly speaking?
-        // WCA Rule 9f8) "The best and worst result are discarded..."
-        // If there are duplicate mins or maxs, we discard one of them.
-        // Summing all and subtracting min and max achieves this safely.
+        let sum = numericTimes.reduce(0) { currentSum, time in
+            if time == Double.infinity { return currentSum } // Infinity shouldn't add to sum
+            return currentSum + time
+        }
 
-        let sum = times.reduce(0, +) - minTime - maxTime
-        let avg = sum / Double(count - 2)
+        // If maxTime was Infinity (DNF), we just didn't add it.
+        // If minTime was somehow Infinity (impossible unless all are DNF), we have issue.
+
+        // We need to subtract minTime from sum. maxTime is excluded by not adding if it's infinity, or subtracting if it is finite.
+
+        var adjustedSum = sum
+
+        if maxTime != Double.infinity {
+            adjustedSum -= maxTime
+        }
+
+        adjustedSum -= minTime
+
+        let avg = adjustedSum / Double(count - 2)
 
         return avg
     }
