@@ -48,3 +48,7 @@ struct ManualEntryView: View {
         }
     }
 }
+
+#Preview {
+    ManualEntryView(viewModel: TimerViewModel(), isPresented: .constant(true))
+}
