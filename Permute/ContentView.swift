@@ -11,6 +11,9 @@ struct ContentView: View {
     @StateObject private var viewModel = TimerViewModel()
     @State private var showSettings = false
     @State private var showUndo = false
+    @State private var shareImage: Image?
+    @State private var showAnalysis = false
+    @State private var showManualEntry = false
     
     var body: some View {
         ZStack {
@@ -60,6 +63,26 @@ struct ContentView: View {
                             }
                     )
                 
+                // Share PB Button
+                if viewModel.state != .running && viewModel.lastSolveWasPB, let shareImage = shareImage {
+                    ShareLink(
+                        item: shareImage,
+                        preview: SharePreview("New PB", image: shareImage)
+                    ) {
+                        HStack {
+                            Image(systemName: "square.and.arrow.up")
+                            Text("Share PB")
+                        }
+                        .font(.headline)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 10)
+                        .background(Color.yellow)
+                        .foregroundColor(.black)
+                        .cornerRadius(20)
+                    }
+                    .padding(.top, 10)
+                }
+
                 // Averages Display
                 if viewModel.state != .running && viewModel.state != .inspection {
                     HStack(spacing: 40) {
@@ -130,14 +153,26 @@ struct ContentView: View {
         }, perform: {})
         .overlay(alignment: .topTrailing) {
             if viewModel.state != .running && viewModel.state != .holding && viewModel.state != .readyToInspect {
-                Button(action: {
-                    showSettings = true
-                }) {
-                    Image(systemName: "gearshape.fill")
-                        .font(.system(size: 24))
-                        .foregroundColor(.white.opacity(0.6))
-                        .padding()
+                HStack(spacing: 0) {
+                    Button(action: {
+                        showManualEntry = true
+                    }) {
+                        Image(systemName: "keyboard")
+                            .font(.system(size: 24))
+                            .foregroundColor(.white.opacity(0.6))
+                            .padding()
+                    }
+
+                    Button(action: {
+                        showSettings = true
+                    }) {
+                        Image(systemName: "gearshape.fill")
+                            .font(.system(size: 24))
+                            .foregroundColor(.white.opacity(0.6))
+                            .padding()
+                    }
                 }
+                .padding()
             }
         }
         .overlay(alignment: .bottom) {
@@ -163,6 +198,15 @@ struct ContentView: View {
         }
         .sheet(isPresented: $showSettings) {
             SettingsView(viewModel: viewModel)
+        }
+        .onChange(of: viewModel.lastSolveWasPB) { isPB in
+            if isPB, let lastSolve = viewModel.solves.first {
+                self.shareImage = generateShareImage(for: lastSolve)
+            } else {
+                self.shareImage = nil
+            }
+        .sheet(isPresented: $showManualEntry) {
+            ManualEntryView(viewModel: viewModel, isPresented: $showManualEntry)
         }
     }
     
@@ -196,6 +240,16 @@ struct ContentView: View {
 
     private func formatTime(_ time: TimeInterval) -> String {
         time.formattedTime
+    }
+
+    @MainActor
+    private func generateShareImage(for solve: Solve) -> Image {
+        let renderer = ImageRenderer(content: ShareCardView(solve: solve))
+        renderer.scale = 3.0
+        if let uiImage = renderer.uiImage {
+            return Image(uiImage: uiImage)
+        }
+        return Image(systemName: "photo")
     }
 }
 

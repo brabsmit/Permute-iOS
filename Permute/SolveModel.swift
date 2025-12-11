@@ -54,3 +54,10 @@ struct Solve: Identifiable, Codable {
         }
     }
 }
+
+struct Session: Identifiable, Codable, Hashable {
+    var id: UUID
+    var name: String
+    var solves: [Solve]
+    var cubeType: String
+}
