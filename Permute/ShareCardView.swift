@@ -66,3 +66,13 @@ struct ShareCardView: View {
         .background(Color(red: 0.1, green: 0.1, blue: 0.1))
     }
 }
+
+#Preview {
+    ShareCardView(solve: Solve(
+        id: UUID(),
+        time: 12.34,
+        scramble: "R U R' U'",
+        date: Date(),
+        penalty: .none
+    ))
+}

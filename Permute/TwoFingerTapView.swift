@@ -44,3 +44,12 @@ struct TwoFingerTapView: UIViewRepresentable {
         }
     }
 }
+
+#Preview {
+    ZStack {
+        Color.blue
+        TwoFingerTapView(onTwoFingerTap: {
+            print("Tapped!")
+        })
+    }
+}

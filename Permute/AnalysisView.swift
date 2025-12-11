@@ -110,3 +110,7 @@ struct AnalysisView: View {
         }
     }
 }
+
+#Preview {
+    AnalysisView(viewModel: TimerViewModel())
+}
