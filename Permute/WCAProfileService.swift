@@ -65,4 +65,11 @@ class WCAProfileService {
         let response = try JSONDecoder().decode(MeResponse.self, from: data)
         return response.me
     }
+
+    func fetchPerson(wcaID: String) async throws -> PersonResponse {
+        // Fetch public data for a person
+        let data = try await WCANetworkManager.shared.request(endpoint: "/persons/\(wcaID)")
+        let response = try JSONDecoder().decode(PersonResponse.self, from: data)
+        return response
+    }
 }
