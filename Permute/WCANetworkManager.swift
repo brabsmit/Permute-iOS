@@ -13,8 +13,8 @@ import UIKit
 // MARK: - Configuration Constants
 // These should be replaced with your actual WCA Application credentials.
 private let WCA_BASE_URL = "https://www.worldcubeassociation.org/api/v0"
-private let WCA_CLIENT_ID = "YOUR_CLIENT_ID_HERE"
-private let WCA_CLIENT_SECRET = "YOUR_CLIENT_SECRET_HERE"
+private let WCA_CLIENT_ID = ProcessInfo.processInfo.environment["WCA_APPLICATION_ID"] ?? "YOUR_CLIENT_ID_HERE"
+private let WCA_CLIENT_SECRET = ProcessInfo.processInfo.environment["WCA_SECRET"] ?? "YOUR_CLIENT_SECRET_HERE"
 private let WCA_REDIRECT_URI = "YOUR_REDIRECT_URI_HERE" // e.g., "com.permute.app://callback"
 private let WCA_CALLBACK_SCHEME = "YOUR_CALLBACK_SCHEME_HERE" // e.g., "com.permute.app"
 
