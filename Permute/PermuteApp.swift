@@ -6,9 +6,14 @@
 //
 
 import SwiftUI
+import UIKit
 
 @main
 struct PermuteApp: App {
+    init() {
+        UIApplication.shared.isIdleTimerDisabled = true
+    }
+
     var body: some Scene {
         WindowGroup {
             ContentView()
