@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import UIKit
 
 enum TimerState {
     case idle           // Waiting for user
@@ -47,10 +48,13 @@ class TimerViewModel: ObservableObject {
             state = .readyToInspect
             // Reset timer visuals
             timeElapsed = 0.0
+            triggerHapticFeedback(style: .light)
         case .inspection:
             state = .holding
+            triggerHapticFeedback(style: .light)
         case .running:
             stopTimer()
+            triggerHapticFeedback(style: .heavy)
         case .readyToInspect, .holding:
             // Ignore additional touches if already holding
             break
@@ -62,11 +66,19 @@ class TimerViewModel: ObservableObject {
         switch state {
         case .readyToInspect:
             startInspection()
+            triggerHapticFeedback(style: .medium)
         case .holding:
             startTimer()
+            triggerHapticFeedback(style: .medium)
         case .idle, .inspection, .running:
             break
         }
+    }
+
+    private func triggerHapticFeedback(style: UIImpactFeedbackGenerator.FeedbackStyle) {
+        let generator = UIImpactFeedbackGenerator(style: style)
+        generator.prepare()
+        generator.impactOccurred()
     }
 
     private func startInspection() {
