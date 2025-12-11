@@ -99,20 +99,20 @@ class TimerViewModel: ObservableObject {
     
     func deleteSolve(at offsets: IndexSet) {
         solves.remove(atOffsets: offsets)
-        saveSolves()
+        saveData()
     }
 
     func deleteLastSolve() {
         guard !solves.isEmpty else { return }
         lastDeletedSolve = solves.removeFirst()
-        saveSolves()
+        saveData()
     }
 
     func undoDelete() {
         guard let solve = lastDeletedSolve else { return }
         solves.insert(solve, at: 0)
         lastDeletedSolve = nil
-        saveSolves()
+        saveData()
     }
 
     func togglePlusTwo() {
@@ -124,14 +124,13 @@ class TimerViewModel: ObservableObject {
             solve.penalty = .plusTwo
         }
         solves[0] = solve
-        saveSolves()
         saveData()
     }
 
     func addManualSolve(time: TimeInterval) {
         let newSolve = Solve(id: UUID(), time: time, scramble: currentScramble, date: Date())
         solves.insert(newSolve, at: 0)
-        saveSolves()
+        saveData()
         newScramble()
     }
 

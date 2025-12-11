@@ -205,6 +205,7 @@ struct ContentView: View {
             } else {
                 self.shareImage = nil
             }
+        }
         .sheet(isPresented: $showManualEntry) {
             ManualEntryView(viewModel: viewModel, isPresented: $showManualEntry)
         }
