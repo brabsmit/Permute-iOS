@@ -11,6 +11,8 @@ struct ContentView: View {
     @StateObject private var viewModel = TimerViewModel()
     @State private var showSettings = false
     @State private var shareImage: Image?
+    @State private var showAnalysis = false
+    @State private var showManualEntry = false
     
     var body: some View {
         ZStack {
@@ -125,14 +127,26 @@ struct ContentView: View {
         }, perform: {})
         .overlay(alignment: .topTrailing) {
             if viewModel.state != .running && viewModel.state != .holding && viewModel.state != .readyToInspect {
-                Button(action: {
-                    showSettings = true
-                }) {
-                    Image(systemName: "gearshape.fill")
-                        .font(.system(size: 24))
-                        .foregroundColor(.white.opacity(0.6))
-                        .padding()
+                HStack(spacing: 0) {
+                    Button(action: {
+                        showManualEntry = true
+                    }) {
+                        Image(systemName: "keyboard")
+                            .font(.system(size: 24))
+                            .foregroundColor(.white.opacity(0.6))
+                            .padding()
+                    }
+
+                    Button(action: {
+                        showSettings = true
+                    }) {
+                        Image(systemName: "gearshape.fill")
+                            .font(.system(size: 24))
+                            .foregroundColor(.white.opacity(0.6))
+                            .padding()
+                    }
                 }
+                .padding()
             }
         }
         .sheet(isPresented: $showSettings) {
@@ -144,6 +158,8 @@ struct ContentView: View {
             } else {
                 self.shareImage = nil
             }
+        .sheet(isPresented: $showManualEntry) {
+            ManualEntryView(viewModel: viewModel, isPresented: $showManualEntry)
         }
     }
     

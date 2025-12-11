@@ -78,4 +78,25 @@ class TimerViewModelTests: XCTestCase {
         vm.userTouchedUp()
         XCTAssertEqual(vm.state, .running)
     }
+
+    func testAddManualSolve() {
+        let vm = TimerViewModel()
+        let initialScramble = vm.currentScramble
+        let manualTime: TimeInterval = 12.45
+
+        vm.addManualSolve(time: manualTime)
+
+        // Check if solve was added
+        XCTAssertEqual(vm.solves.count, 1)
+        XCTAssertEqual(vm.solves.first?.time, manualTime)
+        XCTAssertEqual(vm.solves.first?.scramble, initialScramble)
+
+        // Check if scramble was updated
+        XCTAssertNotEqual(vm.currentScramble, initialScramble)
+
+        // Check persistence
+        let vm2 = TimerViewModel()
+        XCTAssertEqual(vm2.solves.count, 1)
+        XCTAssertEqual(vm2.solves.first?.time, manualTime)
+    }
 }
