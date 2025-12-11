@@ -36,11 +36,16 @@ class TimerViewModel: ObservableObject {
     }
 
     var ao5: String {
-        calculateAverage(of: 5)
+        formatAverage(calculateAverage(of: 5))
     }
 
     var ao12: String {
-        calculateAverage(of: 12)
+        formatAverage(calculateAverage(of: 12))
+    }
+
+    // Public getter for analysis view
+    func getAverage(of count: Int) -> Double? {
+        calculateAverage(of: count)
     }
 
     private var timer: Timer?
@@ -174,11 +179,11 @@ class TimerViewModel: ObservableObject {
         }
     }
 
-    private func calculateAverage(of count: Int) -> String {
-        guard solves.count >= count else { return "--" }
+    private func calculateAverage(of count: Int) -> Double? {
+        guard solves.count >= count else { return nil }
         let recentSolves = Array(solves.prefix(count))
         let times = recentSolves.map { $0.time }
-        guard let minTime = times.min(), let maxTime = times.max() else { return "--" }
+        guard let minTime = times.min(), let maxTime = times.max() else { return nil }
 
         // Remove best and worst
         // Note: if multiple min or max exist, only one of each should be removed strictly speaking?
@@ -189,6 +194,11 @@ class TimerViewModel: ObservableObject {
         let sum = times.reduce(0, +) - minTime - maxTime
         let avg = sum / Double(count - 2)
 
+        return avg
+    }
+
+    private func formatAverage(_ average: Double?) -> String {
+        guard let avg = average else { return "--" }
         return avg.formattedTime
     }
 }
