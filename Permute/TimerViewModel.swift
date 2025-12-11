@@ -73,6 +73,13 @@ class TimerViewModel: ObservableObject {
         solves.remove(atOffsets: offsets)
     }
 
+    func addManualSolve(time: TimeInterval) {
+        let newSolve = Solve(id: UUID(), time: time, scramble: currentScramble, date: Date())
+        solves.insert(newSolve, at: 0)
+        saveSolves()
+        newScramble()
+    }
+
     // User touches screen
     func userTouchedDown() {
         switch state {

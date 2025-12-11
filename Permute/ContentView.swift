@@ -11,6 +11,7 @@ struct ContentView: View {
     @StateObject private var viewModel = TimerViewModel()
     @State private var showSettings = false
     @State private var showAnalysis = false
+    @State private var showManualEntry = false
     
     var body: some View {
         ZStack {
@@ -105,13 +106,14 @@ struct ContentView: View {
         }, perform: {})
         .overlay(alignment: .topTrailing) {
             if viewModel.state != .running && viewModel.state != .holding && viewModel.state != .readyToInspect {
-                HStack(spacing: 16) {
+                HStack(spacing: 0) {
                     Button(action: {
-                        showAnalysis = true
+                        showManualEntry = true
                     }) {
-                        Image(systemName: "chart.xyaxis.line")
+                        Image(systemName: "keyboard")
                             .font(.system(size: 24))
                             .foregroundColor(.white.opacity(0.6))
+                            .padding()
                     }
 
                     Button(action: {
@@ -120,6 +122,7 @@ struct ContentView: View {
                         Image(systemName: "gearshape.fill")
                             .font(.system(size: 24))
                             .foregroundColor(.white.opacity(0.6))
+                            .padding()
                     }
                 }
                 .padding()
@@ -128,8 +131,8 @@ struct ContentView: View {
         .sheet(isPresented: $showSettings) {
             SettingsView(viewModel: viewModel)
         }
-        .sheet(isPresented: $showAnalysis) {
-            AnalysisView(viewModel: viewModel)
+        .sheet(isPresented: $showManualEntry) {
+            ManualEntryView(viewModel: viewModel, isPresented: $showManualEntry)
         }
     }
     
