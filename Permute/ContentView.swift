@@ -10,6 +10,7 @@ import SwiftUI
 struct ContentView: View {
     @StateObject private var viewModel = TimerViewModel()
     @State private var showSettings = false
+    @State private var showAnalysis = false
     @State private var showManualEntry = false
     
     var body: some View {
@@ -124,6 +125,7 @@ struct ContentView: View {
                             .padding()
                     }
                 }
+                .padding()
             }
         }
         .sheet(isPresented: $showSettings) {
