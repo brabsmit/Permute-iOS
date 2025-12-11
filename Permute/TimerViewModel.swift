@@ -32,6 +32,10 @@ class TimerViewModel: ObservableObject {
         currentScramble = ScrambleGenerator.generateScramble()
     }
     
+    func deleteSolve(at offsets: IndexSet) {
+        solves.remove(atOffsets: offsets)
+    }
+
     // User touches screen
     func userTouchedDown() {
         if state == .idle {
