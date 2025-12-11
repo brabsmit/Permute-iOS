@@ -21,8 +21,10 @@ class TimerViewModel: ObservableObject {
     
     private var timer: Timer?
     private var startDate: Date?
+    private let solvesKey = "solves_history"
     
     init() {
+        loadSolves()
         newScramble()
     }
     
@@ -68,8 +70,22 @@ class TimerViewModel: ObservableObject {
         // Save the solve
         let newSolve = Solve(id: UUID(), time: timeElapsed, scramble: currentScramble, date: Date())
         solves.insert(newSolve, at: 0) // Add to top of list
+        saveSolves()
         
         // Generate next scramble
         newScramble()
+    }
+
+    private func saveSolves() {
+        if let encoded = try? JSONEncoder().encode(solves) {
+            UserDefaults.standard.set(encoded, forKey: solvesKey)
+        }
+    }
+
+    private func loadSolves() {
+        if let data = UserDefaults.standard.data(forKey: solvesKey),
+           let decoded = try? JSONDecoder().decode([Solve].self, from: data) {
+            solves = decoded
+        }
     }
 }
