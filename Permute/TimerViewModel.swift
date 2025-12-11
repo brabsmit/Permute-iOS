@@ -100,7 +100,12 @@ class TimerViewModel: ObservableObject {
     }
     
     func newScramble() {
-        currentScramble = ScrambleGenerator.generateScramble()
+        Task {
+            let scramble = await ScrambleGenerator.generateScramble()
+            await MainActor.run {
+                self.currentScramble = scramble
+            }
+        }
     }
     
     func deleteSolve(at offsets: IndexSet) {
