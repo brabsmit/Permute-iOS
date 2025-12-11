@@ -72,4 +72,34 @@ class TimerViewModel: ObservableObject {
         // Generate next scramble
         newScramble()
     }
+
+    // Averages (Ao5 / Ao12)
+    var ao5: String {
+        return formatAverage(count: 5)
+    }
+
+    var ao12: String {
+        return formatAverage(count: 12)
+    }
+
+    private func formatAverage(count: Int) -> String {
+        guard let avg = calculateAverage(count: count) else { return "-" }
+        return avg.formattedTime
+    }
+
+    private func calculateAverage(count: Int) -> TimeInterval? {
+        guard solves.count >= count else { return nil }
+
+        // Grab the last 'count' solves (from the beginning of the list)
+        let subset = solves.prefix(count).map { $0.time }
+
+        // Remove best and worst
+        // We sort the times, then drop the first (min) and last (max)
+        let sorted = subset.sorted()
+        let trimmed = sorted.dropFirst().dropLast()
+
+        // Average the middle
+        let sum = trimmed.reduce(0, +)
+        return sum / Double(trimmed.count)
+    }
 }
