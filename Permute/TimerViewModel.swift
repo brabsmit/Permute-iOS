@@ -23,6 +23,10 @@ class TimerViewModel: ObservableObject {
     @Published var solves: [Solve] = []
     @Published var inspectionTime: Int = 15
     
+    // Sessions
+    @Published var sessions: [Session] = []
+    @Published var currentSessionId: UUID = UUID()
+
     // Settings
     @Published var isInspectionEnabled: Bool = UserDefaults.standard.bool(forKey: "isInspectionEnabled") {
         didSet {
@@ -31,7 +35,12 @@ class TimerViewModel: ObservableObject {
     }
     @Published var cubeType: String = UserDefaults.standard.string(forKey: "cubeType") ?? "3x3" {
         didSet {
+            // When cubeType changes globally (via settings), update current session
+            // Note: This might be triggered when we switch session and update cubeType, causing a loop?
+            // We need to be careful.
             UserDefaults.standard.set(cubeType, forKey: "cubeType")
+            updateCurrentSessionSettings()
+            newScramble()
         }
     }
 
@@ -48,10 +57,16 @@ class TimerViewModel: ObservableObject {
         calculateAverage(of: count)
     }
 
+    var currentSession: Session? {
+        sessions.first(where: { $0.id == currentSessionId })
+    }
+
     private var timer: Timer?
     private var inspectionTimer: Timer?
     private var startDate: Date?
-    private let solvesKey = "solves_history"
+    private let solvesKey = "solves_history" // Legacy key
+    private let sessionsKey = "sessions_history"
+    private let currentSessionKey = "current_session_id"
     
     init() {
         // Register default defaults
@@ -59,9 +74,18 @@ class TimerViewModel: ObservableObject {
 
         // Re-load to ensure we have correct values if they were just registered
         self.isInspectionEnabled = UserDefaults.standard.bool(forKey: "isInspectionEnabled")
-        self.cubeType = UserDefaults.standard.string(forKey: "cubeType") ?? "3x3"
 
-        loadSolves()
+        // We load sessions first.
+        loadData()
+
+        // If we have a current session, use its cube type.
+        if let session = currentSession {
+            self.cubeType = session.cubeType
+            self.solves = session.solves
+        } else {
+            self.cubeType = UserDefaults.standard.string(forKey: "cubeType") ?? "3x3"
+        }
+
         newScramble()
     }
     
@@ -71,6 +95,7 @@ class TimerViewModel: ObservableObject {
     
     func deleteSolve(at offsets: IndexSet) {
         solves.remove(atOffsets: offsets)
+        saveData()
     }
 
     func addManualSolve(time: TimeInterval) {
@@ -167,22 +192,109 @@ class TimerViewModel: ObservableObject {
         // Save the solve
         let newSolve = Solve(id: UUID(), time: timeElapsed, scramble: currentScramble, date: Date())
         solves.insert(newSolve, at: 0) // Add to top of list
-        saveSolves()
+        saveData()
         
         // Generate next scramble
         newScramble()
     }
 
-    private func saveSolves() {
-        if let encoded = try? JSONEncoder().encode(solves) {
-            UserDefaults.standard.set(encoded, forKey: solvesKey)
+    // Session Management
+
+    func createSession(name: String, cubeType: String) {
+        let newSession = Session(id: UUID(), name: name, solves: [], cubeType: cubeType)
+        sessions.append(newSession)
+        switchSession(to: newSession.id)
+        saveData()
+    }
+
+    func switchSession(to id: UUID) {
+        guard let session = sessions.first(where: { $0.id == id }) else { return }
+        currentSessionId = id
+        solves = session.solves
+
+        // Updating cubeType will trigger didSet, which calls updateCurrentSessionSettings
+        // We want to update the local cubeType state to match the session
+        // But we avoid infinite loop by checking if it's different
+        if cubeType != session.cubeType {
+            cubeType = session.cubeType
+        }
+
+        // Also save current session ID
+        UserDefaults.standard.set(currentSessionId.uuidString, forKey: currentSessionKey)
+        newScramble() // Scramble might depend on cubeType? Currently ScrambleGenerator is static/global but maybe not?
+        // Actually ScrambleGenerator seems to not take parameters in the current code I've seen?
+        // Let's check ScrambleGenerator.swift if I can. But for now newScramble() is safe.
+    }
+
+    func deleteSession(id: UUID) {
+        // Don't delete the last session
+        guard sessions.count > 1 else { return }
+
+        if let index = sessions.firstIndex(where: { $0.id == id }) {
+            sessions.remove(at: index)
+
+            // If we deleted the current session, switch to the first one
+            if id == currentSessionId {
+                if let first = sessions.first {
+                    switchSession(to: first.id)
+                }
+            }
+            saveData()
         }
     }
 
-    private func loadSolves() {
-        if let data = UserDefaults.standard.data(forKey: solvesKey),
-           let decoded = try? JSONDecoder().decode([Solve].self, from: data) {
-            solves = decoded
+    private func updateCurrentSessionSettings() {
+        if let index = sessions.firstIndex(where: { $0.id == currentSessionId }) {
+            sessions[index].cubeType = cubeType
+            // We don't save solves here, just settings.
+            // But we should persist sessions.
+            // Note: This is called from cubeType didSet.
+            saveSessions()
+        }
+    }
+
+    private func saveData() {
+        // Sync current solves to current session
+        if let index = sessions.firstIndex(where: { $0.id == currentSessionId }) {
+            sessions[index].solves = solves
+        }
+        saveSessions()
+    }
+
+    private func saveSessions() {
+        if let encoded = try? JSONEncoder().encode(sessions) {
+            UserDefaults.standard.set(encoded, forKey: sessionsKey)
+        }
+        UserDefaults.standard.set(currentSessionId.uuidString, forKey: currentSessionKey)
+    }
+
+    private func loadData() {
+        // Try to load sessions
+        if let data = UserDefaults.standard.data(forKey: sessionsKey),
+           let decoded = try? JSONDecoder().decode([Session].self, from: data),
+           !decoded.isEmpty {
+            sessions = decoded
+
+            // Restore current session ID
+            if let savedIdString = UserDefaults.standard.string(forKey: currentSessionKey),
+               let savedId = UUID(uuidString: savedIdString),
+               sessions.contains(where: { $0.id == savedId }) {
+                currentSessionId = savedId
+            } else {
+                currentSessionId = sessions.first!.id
+            }
+        } else {
+            // Migration: Check for legacy solves
+            var initialSolves: [Solve] = []
+            if let data = UserDefaults.standard.data(forKey: solvesKey),
+               let decoded = try? JSONDecoder().decode([Solve].self, from: data) {
+                initialSolves = decoded
+            }
+
+            let defaultSession = Session(id: UUID(), name: "Main Session", solves: initialSolves, cubeType: UserDefaults.standard.string(forKey: "cubeType") ?? "3x3")
+            sessions = [defaultSession]
+            currentSessionId = defaultSession.id
+            saveSessions()
         }
     }
 
