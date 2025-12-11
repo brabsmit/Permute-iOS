@@ -234,6 +234,11 @@ struct ContentView: View {
                 return lastSolve.formattedTime
             }
             return formatTime(viewModel.timeElapsed)
+        case .running:
+            if viewModel.isFocusModeEnabled {
+                return "Solving..."
+            }
+            return formatTime(viewModel.timeElapsed)
         default:
             return formatTime(viewModel.timeElapsed)
         }

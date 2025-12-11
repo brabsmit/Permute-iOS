@@ -33,6 +33,7 @@ struct SettingsView: View {
 
                 Section(header: Text("Timer")) {
                     Toggle("Inspection Time", isOn: $viewModel.isInspectionEnabled)
+                    Toggle("Focus Mode", isOn: $viewModel.isFocusModeEnabled)
                 }
 
                 Section(header: Text("Puzzle")) {

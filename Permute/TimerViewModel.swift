@@ -36,6 +36,11 @@ class TimerViewModel: ObservableObject {
             UserDefaults.standard.set(isInspectionEnabled, forKey: "isInspectionEnabled")
         }
     }
+    @Published var isFocusModeEnabled: Bool = UserDefaults.standard.bool(forKey: "isFocusModeEnabled") {
+        didSet {
+            UserDefaults.standard.set(isFocusModeEnabled, forKey: "isFocusModeEnabled")
+        }
+    }
     @Published var cubeType: String = UserDefaults.standard.string(forKey: "cubeType") ?? "3x3" {
         didSet {
             // When cubeType changes globally (via settings), update current session
@@ -74,10 +79,11 @@ class TimerViewModel: ObservableObject {
     
     init() {
         // Register default defaults
-        UserDefaults.standard.register(defaults: ["isInspectionEnabled": true, "cubeType": "3x3"])
+        UserDefaults.standard.register(defaults: ["isInspectionEnabled": true, "cubeType": "3x3", "isFocusModeEnabled": false])
 
         // Re-load to ensure we have correct values if they were just registered
         self.isInspectionEnabled = UserDefaults.standard.bool(forKey: "isInspectionEnabled")
+        self.isFocusModeEnabled = UserDefaults.standard.bool(forKey: "isFocusModeEnabled")
 
         // We load sessions first.
         loadData()
