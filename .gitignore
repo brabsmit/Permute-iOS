@@ -1,0 +1,10 @@
+## User settings
+xcuserdata/
+
+## Derived data
+DerivedData/
+build/
+
+## Misc
+.DS_Store
+*.xcuserstate
