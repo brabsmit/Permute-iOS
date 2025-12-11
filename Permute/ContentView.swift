@@ -33,11 +33,24 @@ struct ContentView: View {
             VStack {
                 // Top: Scramble
                 if viewModel.state != .running {
-                    Text(viewModel.currentScramble)
-                        .font(.system(size: 24, weight: .medium, design: .monospaced))
-                        .multilineTextAlignment(.center)
-                        .padding()
-                        .foregroundColor(.white)
+                    HStack(spacing: 0) {
+                        Text(viewModel.currentScramble)
+                            .font(.system(size: 24, weight: .medium, design: .monospaced))
+                            .multilineTextAlignment(.center)
+                            .padding()
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+
+                        Button(action: {
+                            SpeechManager.shared.speak(scramble: viewModel.currentScramble)
+                        }) {
+                            Image(systemName: "speaker.wave.2.fill")
+                                .font(.title2)
+                                .foregroundColor(.white)
+                                .padding()
+                        }
+                    }
+                    .padding(.horizontal)
                 }
                 
                 Spacer()
