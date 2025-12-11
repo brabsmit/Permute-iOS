@@ -186,10 +186,12 @@ class TimerViewModel: ObservableObject {
 
         case .readyToInspect:
             startInspection()
+            SpeechManager.shared.stop()
             triggerHapticFeedback(style: .medium)
 
         case .holding:
             startTimer()
+            SpeechManager.shared.stop()
             triggerHapticFeedback(style: .medium)
 
         case .idle, .inspection, .running:
