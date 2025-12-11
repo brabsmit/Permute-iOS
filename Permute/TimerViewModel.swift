@@ -23,6 +23,18 @@ class TimerViewModel: ObservableObject {
     @Published var solves: [Solve] = []
     @Published var inspectionTime: Int = 15
     
+    // Settings
+    @Published var isInspectionEnabled: Bool = UserDefaults.standard.bool(forKey: "isInspectionEnabled") {
+        didSet {
+            UserDefaults.standard.set(isInspectionEnabled, forKey: "isInspectionEnabled")
+        }
+    }
+    @Published var cubeType: String = UserDefaults.standard.string(forKey: "cubeType") ?? "3x3" {
+        didSet {
+            UserDefaults.standard.set(cubeType, forKey: "cubeType")
+        }
+    }
+
     var ao5: String {
         calculateAverage(of: 5)
     }
@@ -37,6 +49,13 @@ class TimerViewModel: ObservableObject {
     private let solvesKey = "solves_history"
     
     init() {
+        // Register default defaults
+        UserDefaults.standard.register(defaults: ["isInspectionEnabled": true, "cubeType": "3x3"])
+
+        // Re-load to ensure we have correct values if they were just registered
+        self.isInspectionEnabled = UserDefaults.standard.bool(forKey: "isInspectionEnabled")
+        self.cubeType = UserDefaults.standard.string(forKey: "cubeType") ?? "3x3"
+
         loadSolves()
         newScramble()
     }
@@ -53,16 +72,24 @@ class TimerViewModel: ObservableObject {
     func userTouchedDown() {
         switch state {
         case .idle:
-            state = .readyToInspect
             // Reset timer visuals
             timeElapsed = 0.0
+
+            if isInspectionEnabled {
+                state = .readyToInspect
+            } else {
+                state = .holding
+            }
             triggerHapticFeedback(style: .light)
+
         case .inspection:
             state = .holding
             triggerHapticFeedback(style: .light)
+
         case .running:
             stopTimer()
             triggerHapticFeedback(style: .heavy)
+
         case .readyToInspect, .holding:
             // Ignore additional touches if already holding
             break
@@ -75,9 +102,11 @@ class TimerViewModel: ObservableObject {
         case .readyToInspect:
             startInspection()
             triggerHapticFeedback(style: .medium)
+
         case .holding:
             startTimer()
             triggerHapticFeedback(style: .medium)
+
         case .idle, .inspection, .running:
             break
         }
