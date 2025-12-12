@@ -22,13 +22,13 @@ extension TimeInterval {
     }
 }
 
-enum Penalty: String, Codable {
+enum Penalty: String, Codable, Hashable {
     case none
     case plusTwo = "+2"
     case dnf = "DNF"
 }
 
-struct Solve: Identifiable, Codable {
+struct Solve: Identifiable, Codable, Hashable {
     let id: UUID
     let time: TimeInterval
     let scramble: String

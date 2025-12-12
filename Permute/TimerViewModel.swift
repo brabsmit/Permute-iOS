@@ -377,9 +377,9 @@ class TimerViewModel: ObservableObject {
         let dnfCount = recentSolves.filter { $0.penalty == .dnf }.count
 
         if count == 5 {
-            if dnfCount > 1 { return "DNF" }
+            if dnfCount > 1 { return Double.infinity }
         } else if count == 12 {
-            if dnfCount > 1 { return "DNF" } // Wait, for Ao12, is it > 1? WCA: Any result > 1 DNF is DNF.
+            if dnfCount > 1 { return Double.infinity }
         }
 
         // If there is 1 DNF, we treat it as the worst time.
@@ -394,12 +394,9 @@ class TimerViewModel: ObservableObject {
             return solve.effectiveTime
         }
 
-        guard let minTime = numericTimes.min(), let maxTime = numericTimes.max() else { return "--" }
+        guard let minTime = numericTimes.min(), let maxTime = numericTimes.max() else { return nil }
 
         // If maxTime is infinity (DNF), it gets removed as the "worst".
-        let times = recentSolves.map { $0.time }
-        guard let minTime = times.min(), let maxTime = times.max() else { return nil }
-
         // Remove best and worst
         let sum = numericTimes.reduce(0) { currentSum, time in
             if time == Double.infinity { return currentSum } // Infinity shouldn't add to sum
@@ -426,6 +423,7 @@ class TimerViewModel: ObservableObject {
 
     private func formatAverage(_ average: Double?) -> String {
         guard let avg = average else { return "--" }
+        if avg == Double.infinity { return "DNF" }
         return avg.formattedTime
     }
 }

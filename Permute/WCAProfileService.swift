@@ -47,6 +47,19 @@ struct WCAUser: Codable, Identifiable {
         self.countryISO2 = countryISO2
         self.avatarURL = avatarURL
     }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(wcaID, forKey: .wcaID)
+        try container.encode(name, forKey: .name)
+        try container.encode(countryISO2, forKey: .countryISO2)
+
+        if let avatarURL = avatarURL {
+            var avatarContainer = container.nestedContainer(keyedBy: AvatarKeys.self, forKey: .avatar)
+            try avatarContainer.encode(avatarURL, forKey: .url)
+        }
+    }
 }
 
 struct MeResponse: Codable {

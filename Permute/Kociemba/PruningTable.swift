@@ -102,7 +102,6 @@ actor PruningTable {
     private func initPhase1Prun() {
         // TwistSlice
         twistSlicePrun.withUnsafeMutableBufferPointer { buffer in
-            buffer.fill(repeatElement: -1)
             buffer[0] = 0
 
             var depth: Int8 = 0
@@ -132,7 +131,6 @@ actor PruningTable {
 
         // FlipSlice
         flipSlicePrun.withUnsafeMutableBufferPointer { buffer in
-            buffer.fill(repeatElement: -1)
             buffer[0] = 0
 
             var depth: Int8 = 0
@@ -212,7 +210,6 @@ actor PruningTable {
     private func initPhase2Prun() {
         // Corner & Edge4
         cornerPrun.withUnsafeMutableBufferPointer { buffer in
-            buffer.fill(repeatElement: -1)
             buffer[0] = 0 // Solved state: corner=0, edge4=0
 
             var depth: Int8 = 0
@@ -242,7 +239,6 @@ actor PruningTable {
 
         // Edge8 & Edge4
         edgePrun.withUnsafeMutableBufferPointer { buffer in
-            buffer.fill(repeatElement: -1)
             buffer[0] = 0
 
             var depth: Int8 = 0
