@@ -248,6 +248,32 @@ class WCANetworkManager: NSObject, ObservableObject {
         deleteFromKeychain(key: kAccessToken)
         deleteFromKeychain(key: kRefreshToken)
     }
+
+    // MARK: - Competitions
+
+    func fetchCompetitions(countryIso2: String, startDate: Date) async throws -> [Competition] {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        let startString = formatter.string(from: startDate)
+
+        // URL encode the parameters just in case
+        let countryParam = countryIso2.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? countryIso2
+        let startParam = startString.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? startString
+
+        let endpoint = "/competitions?country_iso2=\(countryParam)&start=\(startParam)"
+
+        let data = try await request(endpoint: endpoint)
+
+        do {
+            let competitions = try JSONDecoder().decode([Competition].self, from: data)
+            return competitions
+        } catch {
+            // Sometimes APIs return errors in a specific format or wrap the list.
+            // For now assuming [Competition] based on standard usage.
+            print("Decoding error: \(error)")
+            throw WCANetworkError.decodingError
+        }
+    }
 }
 
 // MARK: - ASWebAuthenticationPresentationContextProviding

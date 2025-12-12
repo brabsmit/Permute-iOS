@@ -22,6 +22,11 @@ struct ContentView: View {
                 .tabItem {
                     Label("Me", systemImage: "person.circle")
                 }
+
+            CompetitionView()
+                .tabItem {
+                    Label("Competitions", systemImage: "map")
+                }
         }
         .accentColor(.yellow) // Match the app theme
         .preferredColorScheme(.dark)
